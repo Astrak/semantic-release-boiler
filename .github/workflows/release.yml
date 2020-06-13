@@ -1,0 +1,29 @@
+name: release
+on:
+  - push
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@v1
+    - run: npm i @commitlint/{cli,config-conventional}
+    - name: Debug PR commit messages passed to the linter
+      run: git log -1 --pretty=format:"%s"
+    - name: Vet PR commit messages
+      run: git log -1 --pretty=format:"%s" | npx commitlint
+  release:
+    runs-on: ubuntu-latest
+    needs: [commitlint]
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: "12.13.0"
+      - run: npm i
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release
