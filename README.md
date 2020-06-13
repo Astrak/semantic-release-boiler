@@ -1,6 +1,8 @@
 ## semantic-release-boiler
 
-This repo illustrates how to implement the [semantic-release](https://github.com/semantic-release/semantic-release) tools with a Github Action CI as of June 2020. The setup used has `master` as release branch, generates a `CHANGELOG.md` and may publish on NPM (not verified).
+This repo illustrates how to implement the [semantic-release](https://github.com/semantic-release/semantic-release) tools with a Github Action CI as of June 2020.
+
+The variety of possible setups and requirements entails us to knowing a number of packages, and although their docs is fine, it can take a while to read it through, get certain about which one we want and how to set them up. This repo demos the result of a simple workflow with `master` as the release branch. A release tag will be added, picked up by Github, a `CHANGELOG.md` will be generated and a publication on NPM might happen (not verified).
 
 Here are the steps I followed:
 
@@ -19,15 +21,20 @@ Then setup a default configuration with
 `commitizen init cz-conventional-changelog --save-dev --save-exact`
 
 #### Hook commitizen into `git commit`
-Now, although all the executables are there for us to run the commitizen tools on our latest changes, we want to force every contributor to use and prevent git softwares to miss it too. We can do so by calling commitizen in the `prepare-commit-msg` hook. But this config will not be stored in the repo though. We'll add an additional package to store git configs in a `/hooks` folder:
-`npm i -D shared-git-hooks`
-Now create a file `/hooks/prepare-commit-msg` that reads:
+Now, although all the executables are there for us to run the commitizen tools on our latest changes, we want to force every contributor to use and prevent git softwares to miss it too. We can do so by calling commitizen in the `prepare-commit-msg` hook: create a file `/hooks/prepare-commit-msg` that reads:
 ```bash
 #!/bin/bash
 exec < /dev/tty && node_modules/.bin/git-cz --hook || true
 ```
-And make it executable: `chmod +x ./hooks/prepare-commit-msg`
-Now `git commit` opens the commitizen CLI that formats the messages.
+Now apply it to the user's repository through a `postinstall` script in `package.json`:
+```json
+{
+    "scripts":{
+        "postinstall": "cp ./hooks/prepare-commit-msg ./.git/hooks/prepare-commit-msg && chmod +x ./.git/hooks/prepare-commit-msg"
+    }
+}
+```
+Run `npm i`: now `git commit` opens the commitizen CLI that formats the messages.
 
 #### Vet the commit messages with commitlint
 While commitizen is good, we want to vet that everyone uses it and not let non formatted commit messages through. Otherwise we might miss a release or lose track of changes in the changelog. We can do so with [commitlint](https://github.com/conventional-changelog/commitlint).
@@ -74,20 +81,8 @@ Add a `release` key in the `package.json`:
     "plugins": [
       "@semantic-release/commit-analyzer",
       "@semantic-release/release-notes-generator",
-      [
-        "@semantic-release/changelog",
-        {
-          "changelogFile": "CHANGELOG.md"
-        }
-      ],
-      [
-        "@semantic-release/git",
-        {
-          "assets": [
-            "CHANGELOG.md"
-          ]
-        }
-      ]
+      ["@semantic-release/changelog", {"changelogFile": "CHANGELOG.md"}],
+      ["@semantic-release/git", {"assets": ["CHANGELOG.md"]}]
     ]
   }
 }
